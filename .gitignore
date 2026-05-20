@@ -217,3 +217,7 @@ __marimo__/
 
 # Cache
 **/data_cache/
+
+# TradingAgents run artifacts — analyst/risk/portfolio reports the CLI
+# writes to ./reports/<TICKER>_<TIMESTAMP>/ at end-of-run save.
+reports/

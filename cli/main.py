@@ -1,5 +1,8 @@
 from typing import Optional
 import datetime
+import logging
+import sys
+import traceback
 import typer
 from pathlib import Path
 from functools import wraps
@@ -945,6 +948,19 @@ def run_analysis(checkpoint: bool = False):
     config["output_language"] = selections.get("output_language", "English")
     config["checkpoint_enabled"] = checkpoint
 
+    # Auto-switch data vendors to the crypto stack when the ticker looks like
+    # a crypto pair (BTCUSDT, ETH-USD, SOL/USDT, bare BTC, ...). Without this
+    # the CLI silently falls back to yfinance which 404s on crypto symbols.
+    from tradingagents.agents.utils.agent_utils import detect_asset_class
+    if detect_asset_class(selections["ticker"]) == "crypto":
+        config["asset_class"] = "crypto"
+        config["data_vendors"] = {
+            "core_stock_apis": "binance",
+            "technical_indicators": "binance",
+            "fundamental_data": "coingecko",
+            "news_data": "crypto_news",
+        }
+
     # Create stats callback handler for tracking LLM/tool calls
     stats_handler = StatsCallbackHandler()
 
@@ -973,6 +989,44 @@ def run_analysis(checkpoint: bool = False):
     report_dir.mkdir(parents=True, exist_ok=True)
     log_file = results_dir / "message_tool.log"
     log_file.touch(exist_ok=True)
+
+    # errors.log captures two streams the UI does not preserve:
+    #  1. logging.WARNING+ records from any module (via FileHandler on root)
+    #  2. uncaught Python exceptions (via sys.excepthook), which write a
+    #     full traceback to the file before the interpreter exits.
+    # Both are useful when something goes wrong mid-run and the rich UI
+    # has already been torn down — terminal scrollback isn't always reliable.
+    errors_log = results_dir / "errors.log"
+    error_handler = logging.FileHandler(errors_log, encoding="utf-8")
+    error_handler.setLevel(logging.WARNING)
+    error_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    logging.getLogger().addHandler(error_handler)
+    # Make sure the root logger is at least WARNING (it's WARNING by
+    # default, but the dotenv import path can flip it). We don't lower
+    # the level — that would flood the file with every dataflows DEBUG.
+    if logging.getLogger().level > logging.WARNING:
+        logging.getLogger().setLevel(logging.WARNING)
+
+    # Install an excepthook that appends any uncaught traceback to
+    # errors.log. Chain to the previous hook so we don't swallow the
+    # terminal traceback the user expects to see.
+    _prev_excepthook = sys.excepthook
+
+    def _log_uncaught(exc_type, exc_value, exc_tb):
+        try:
+            with open(errors_log, "a", encoding="utf-8") as fh:
+                fh.write(
+                    f"\n=== Uncaught exception at "
+                    f"{datetime.datetime.now().isoformat(timespec='seconds')} ===\n"
+                )
+                traceback.print_exception(exc_type, exc_value, exc_tb, file=fh)
+        finally:
+            _prev_excepthook(exc_type, exc_value, exc_tb)
+
+    sys.excepthook = _log_uncaught
 
     def save_message_decorator(obj, func_name):
         func = getattr(obj, func_name)
@@ -1051,7 +1105,9 @@ def run_analysis(checkpoint: bool = False):
         # (LLM tracking is handled separately via LLM constructor)
         args = graph.propagator.get_graph_args(callbacks=[stats_handler])
 
-        # Stream the analysis
+        # Stream the analysis. Uncaught exceptions raised here propagate
+        # up through Live and are recorded by the sys.excepthook installed
+        # below — see errors.log next to message_tool.log.
         trace = []
         for chunk in graph.graph.stream(init_agent_state, **args):
             # Process all messages in chunk, deduplicating by message ID
