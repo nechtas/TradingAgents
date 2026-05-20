@@ -24,6 +24,25 @@ from .alpha_vantage import (
 )
 from .alpha_vantage_common import AlphaVantageRateLimitError
 
+# Crypto vendors — selected via data_vendors config when running on a
+# crypto symbol. They mirror the y_finance / alpha_vantage method shapes
+# so the routing logic below treats them uniformly.
+from .binance import (
+    get_crypto_data as get_binance_crypto_data,
+    get_crypto_indicators as get_binance_crypto_indicators,
+)
+from .coingecko import (
+    get_crypto_fundamentals as get_coingecko_fundamentals,
+    get_crypto_market_metrics as get_coingecko_balance_sheet,
+    get_crypto_developer_activity as get_coingecko_cashflow,
+    get_crypto_supply_metrics as get_coingecko_income_statement,
+)
+from .crypto_news import (
+    get_crypto_news as get_crypto_news_cryptocompare,
+    get_crypto_global_news as get_crypto_global_news_cryptocompare,
+    get_crypto_insider as get_crypto_insider_noop,
+)
+
 # Configuration and routing logic
 from .config import get_config
 
@@ -63,6 +82,9 @@ TOOLS_CATEGORIES = {
 VENDOR_LIST = [
     "yfinance",
     "alpha_vantage",
+    "binance",
+    "coingecko",
+    "crypto_news",
 ]
 
 # Mapping of methods to their vendor-specific implementations
@@ -71,41 +93,50 @@ VENDOR_METHODS = {
     "get_stock_data": {
         "alpha_vantage": get_alpha_vantage_stock,
         "yfinance": get_YFin_data_online,
+        "binance": get_binance_crypto_data,
     },
     # technical_indicators
     "get_indicators": {
         "alpha_vantage": get_alpha_vantage_indicator,
         "yfinance": get_stock_stats_indicators_window,
+        "binance": get_binance_crypto_indicators,
     },
     # fundamental_data
     "get_fundamentals": {
         "alpha_vantage": get_alpha_vantage_fundamentals,
         "yfinance": get_yfinance_fundamentals,
+        "coingecko": get_coingecko_fundamentals,
     },
     "get_balance_sheet": {
         "alpha_vantage": get_alpha_vantage_balance_sheet,
         "yfinance": get_yfinance_balance_sheet,
+        "coingecko": get_coingecko_balance_sheet,
     },
     "get_cashflow": {
         "alpha_vantage": get_alpha_vantage_cashflow,
         "yfinance": get_yfinance_cashflow,
+        "coingecko": get_coingecko_cashflow,
     },
     "get_income_statement": {
         "alpha_vantage": get_alpha_vantage_income_statement,
         "yfinance": get_yfinance_income_statement,
+        "coingecko": get_coingecko_income_statement,
     },
     # news_data
     "get_news": {
         "alpha_vantage": get_alpha_vantage_news,
         "yfinance": get_news_yfinance,
+        "crypto_news": get_crypto_news_cryptocompare,
     },
     "get_global_news": {
         "yfinance": get_global_news_yfinance,
         "alpha_vantage": get_alpha_vantage_global_news,
+        "crypto_news": get_crypto_global_news_cryptocompare,
     },
     "get_insider_transactions": {
         "alpha_vantage": get_alpha_vantage_insider_transactions,
         "yfinance": get_yfinance_insider_transactions,
+        "crypto_news": get_crypto_insider_noop,
     },
 }
 

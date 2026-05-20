@@ -12,6 +12,11 @@ DEFAULT_CONFIG = {
     # Pending entries are never pruned. None disables rotation entirely.
     "memory_log_max_entries": None,
     # LLM settings
+    # llm_provider options: openai, anthropic, google, azure, xai, deepseek,
+    #   qwen, glm, ollama, openrouter, claude_cli (uses local `claude` binary
+    #   so a Claude Max / Pro subscription is consumed instead of paying the
+    #   Anthropic API; deep/quick model strings should be CLI aliases like
+    #   "opus", "sonnet", "haiku" or full model ids).
     "llm_provider": "openai",
     "deep_think_llm": "gpt-5.4",
     "quick_think_llm": "gpt-5.4-mini",
@@ -31,17 +36,32 @@ DEFAULT_CONFIG = {
     # Output language for analyst reports and final decision
     # Internal agent debate stays in English for reasoning quality
     "output_language": "English",
+    # Asset class hint for prompt/tool wording. "auto" inspects the symbol
+    # at runtime (anything ending in USDT/USDC/BUSD/FDUSD/TUSD or in the
+    # known crypto base set is treated as crypto; everything else equities).
+    # Set explicitly to "crypto" or "equities" to skip detection.
+    "asset_class": "auto",
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,
     "max_recur_limit": 100,
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
+    #
+    # Equity (default): yfinance / alpha_vantage
+    # Crypto: set the four categories to binance / coingecko / crypto_news, e.g.
+    #     config["data_vendors"] = {
+    #         "core_stock_apis": "binance",
+    #         "technical_indicators": "binance",
+    #         "fundamental_data": "coingecko",   # market cap, supply, dev activity
+    #         "news_data": "crypto_news",        # CryptoCompare news API
+    #     }
+    # and pass a Binance pair as the symbol, e.g. ta.propagate("BTCUSDT", today).
     "data_vendors": {
-        "core_stock_apis": "yfinance",       # Options: alpha_vantage, yfinance
-        "technical_indicators": "yfinance",  # Options: alpha_vantage, yfinance
-        "fundamental_data": "yfinance",      # Options: alpha_vantage, yfinance
-        "news_data": "yfinance",             # Options: alpha_vantage, yfinance
+        "core_stock_apis": "yfinance",       # Options: alpha_vantage, yfinance, binance
+        "technical_indicators": "yfinance",  # Options: alpha_vantage, yfinance, binance
+        "fundamental_data": "yfinance",      # Options: alpha_vantage, yfinance, coingecko
+        "news_data": "yfinance",             # Options: alpha_vantage, yfinance, crypto_news
     },
     # Tool-level configuration (takes precedence over category-level)
     "tool_vendors": {

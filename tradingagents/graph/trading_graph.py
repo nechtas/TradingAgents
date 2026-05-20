@@ -149,6 +149,16 @@ class TradingAgentsGraph:
             if effort:
                 kwargs["effort"] = effort
 
+        elif provider == "claude_cli":
+            # The local `claude` CLI has no thinking/effort equivalent — the
+            # Max subscription decides scheduling. Pass-through any user-set
+            # CLI knobs (timeout, cli_path, extra_args, permission_mode) so
+            # they reach ClaudeCLIClient without leaking through other paths.
+            for key in ("claude_cli_timeout", "claude_cli_path",
+                        "claude_cli_extra_args", "claude_cli_permission_mode"):
+                if self.config.get(key) is not None:
+                    kwargs[key.removeprefix("claude_cli_")] = self.config[key]
+
         return kwargs
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:

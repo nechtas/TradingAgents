@@ -100,6 +100,18 @@ MODEL_OPTIONS: ProviderModeOptions = {
         ],
     },
     # OpenRouter: fetched dynamically. Azure: any deployed model name.
+    # claude_cli: routes through the local `claude` binary (Claude Max/Pro
+    # subscription, no API spend). Aliases match what the CLI accepts.
+    "claude_cli": {
+        "quick": [
+            ("Claude Sonnet (alias)", "sonnet"),
+            ("Claude Haiku (alias) - fastest", "haiku"),
+        ],
+        "deep": [
+            ("Claude Opus (alias) - most capable", "opus"),
+            ("Claude Sonnet (alias)", "sonnet"),
+        ],
+    },
     "ollama": {
         "quick": [
             ("Qwen3:latest (8B, local)", "qwen3:latest"),
